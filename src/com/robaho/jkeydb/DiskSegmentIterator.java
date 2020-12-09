@@ -74,7 +74,7 @@ class DiskSegmentIterator implements LookupIterator{
                     return true;
                 }
                 buffer.clear();
-                int n = segment.keyFile.getChannel().read(buffer,block*Constants.keyBlockSize);
+                int n = segment.keyChannel.read(buffer,block*Constants.keyBlockSize);
                 if(n!=buffer.capacity())
                     throw new IOException("unable to read keyfile");
                 buffer.flip();
