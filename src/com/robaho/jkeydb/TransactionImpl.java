@@ -80,7 +80,7 @@ class TransactionImpl implements Transaction {
         if(!open)
             throw new IllegalStateException("transaction closed");
 
-        db.dblock.acquireUninterruptibly();
+        db.db_lock.acquireUninterruptibly();
         try {
             var it = db.tables.get(table);
             it.Lock();
@@ -92,7 +92,7 @@ class TransactionImpl implements Transaction {
             }
         } finally {
             open = false;
-            db.dblock.release();
+            db.db_lock.release();
         }
     }
 
@@ -114,7 +114,7 @@ class TransactionImpl implements Transaction {
         if(!open)
             throw new IllegalStateException("transaction closed");
 
-        db.dblock.acquireUninterruptibly();
+        db.db_lock.acquireUninterruptibly();
         try {
             db.transactions.remove(id);
             open = false;
@@ -134,16 +134,16 @@ class TransactionImpl implements Transaction {
                     try {
                         DiskIO.writeSegmentToDisk(db, table, memory);
                     } catch (Exception e) {
-                        db.dblock.acquireUninterruptibly();
+                        db.db_lock.acquireUninterruptibly();
                         db.error = e;
-                        db.dblock.release();
+                        db.db_lock.release();
                     } finally {
                         db.wg.done();
                     }
                 });
             }
         } finally {
-            db.dblock.release();
+            db.db_lock.release();
         }
     }
 

@@ -13,8 +13,8 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Database {
-    static final Object all_dblock = new Object();
-    final Semaphore dblock = new Semaphore(1);
+    static final Object global_lock = new Object();
+    final Semaphore db_lock = new Semaphore(1);
     static final ExecutorService executor = Executors.newCachedThreadPool(new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
@@ -35,7 +35,7 @@ public class Database {
     Exception error; // if non-null and async error has occurred
 
     public static Database open(String path,boolean createIfNeeded) throws DatabaseException {
-        synchronized(all_dblock){
+        synchronized(global_lock){
             try {
                 return openImpl(path);
             } catch(DatabaseNotFound e){
@@ -105,7 +105,7 @@ public class Database {
     }
 
     public static void remove(String path) throws DatabaseException {
-        synchronized (all_dblock){
+        synchronized (global_lock){
             checkValidDatabase(path);
             String lockFilePath = path+"/lockfile";
             LockFile lockFile = null;
@@ -122,7 +122,7 @@ public class Database {
     }
 
     public Transaction beginTX(String table) throws DatabaseException, IOException {
-        dblock.acquireUninterruptibly();
+        db_lock.acquireUninterruptibly();
 
         try {
             if (error != null) {
@@ -139,9 +139,9 @@ public class Database {
 
             while (true) { // wait to start transaction if table has too many segments
                 if (it.segments.size() > Constants.maxSegments * 10) {
-                    dblock.release();
+                    db_lock.release();
                     LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
-                    dblock.acquireUninterruptibly();
+                    db_lock.acquireUninterruptibly();
                 } else {
                     break;
                 }
@@ -158,7 +158,7 @@ public class Database {
             }
 
         } finally {
-            dblock.release();
+            db_lock.release();
         }
 
     }
@@ -168,35 +168,37 @@ public class Database {
     }
 
     public void closeWithMerge(int numberOfSegments) throws DatabaseException, IOException {
-        dblock.acquireUninterruptibly();
-        try {
-            if(!open) {
-                throw new DatabaseException("already closed");
-            }
-            if(transactions.size()>0) {
-                throw new DatabaseException("database has open transactions");
-            }
-
-            closing = true;
-
-            dblock.release();
-
-            wg.waitEmpty();
-
-            if(numberOfSegments>0) {
-                Merger.mergeDiskSegments0(this, numberOfSegments);
-            }
-
-            for (var table : tables.values()) {
-                for (var segment : table.segments) {
-                    segment.close();
+        synchronized(global_lock) {
+            db_lock.acquireUninterruptibly();
+            try {
+                if (!open) {
+                    throw new DatabaseException("already closed");
                 }
-            }
+                if (transactions.size() > 0) {
+                    throw new DatabaseException("database has open transactions");
+                }
 
-            open = false;
-            lockFile.unlock();
-        } finally {
-            dblock.release();
+                closing = true;
+
+                db_lock.release();
+
+                wg.waitEmpty();
+
+                if (numberOfSegments > 0) {
+                    Merger.mergeDiskSegments0(this, numberOfSegments);
+                }
+
+                for (var table : tables.values()) {
+                    for (var segment : table.segments) {
+                        segment.close();
+                    }
+                }
+
+                open = false;
+                lockFile.unlock();
+            } finally {
+                db_lock.release();
+            }
         }
     }
 

@@ -16,24 +16,24 @@ class Merger {
     static void mergeDiskSegments(Database db) {
         try {
             for(;;) {
-                db.dblock.acquireUninterruptibly();
+                db.db_lock.acquireUninterruptibly();
                 if(db.closing || db.error != null) {
-                    db.dblock.release();
+                    db.db_lock.release();
                     return;
                 }
 
                 // the following prevents a Close from occurring while this
                 // routine is running
 
-                db.dblock.release();
+                db.db_lock.release();
 
                 try {
                     mergeDiskSegments0(db, Constants.maxSegments);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    db.dblock.acquireUninterruptibly();
+                    db.db_lock.acquireUninterruptibly();
                     db.error = e;
-                    db.dblock.release();
+                    db.db_lock.release();
                 }
 
                 LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
@@ -44,9 +44,9 @@ class Merger {
     }
 
     static void mergeDiskSegments0(Database db, int segmentCount) throws IOException {
-        db.dblock.acquireUninterruptibly();
+        db.db_lock.acquireUninterruptibly();
         List<InternalTable> copy = new ArrayList<>(db.tables.values());
-        db.dblock.release();
+        db.db_lock.release();
 
         for(var table : copy){
             mergeTableSegments(db,table,segmentCount);
