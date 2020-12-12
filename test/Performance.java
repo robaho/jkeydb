@@ -66,7 +66,7 @@ public class Performance {
         var end = System.currentTimeMillis();
         var duration = end-start;
 
-        System.out.println("scan time "+ duration+ "ms, usec per op "+ (duration*1000)/nr);
+        System.out.println("scan time "+ duration+ "ms, usec per op "+ (duration*1000.0)/nr);
 
         start = System.currentTimeMillis();
         itr = tx.lookup("mykey 300000".getBytes(),"mykey 799999".getBytes());
@@ -82,7 +82,7 @@ public class Performance {
         end = System.currentTimeMillis();
         duration = end-start;
 
-        System.out.println("scan time 50% "+duration+"ms, usec per op "+ (duration*1000)/500000);
+        System.out.println("scan time 50% "+duration+"ms, usec per op "+ (duration*1000.0)/500000);
 
         start = System.currentTimeMillis();
 
