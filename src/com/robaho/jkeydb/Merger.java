@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
@@ -116,7 +117,7 @@ class Merger {
                 s.delete();
             }
 
-            List<Segment> newsegments = new ArrayList();
+            List<Segment> newsegments = new CopyOnWriteArrayList<>();
 
             newsegments.addAll(segments.subList(0,index));
             newsegments.add(newseg);

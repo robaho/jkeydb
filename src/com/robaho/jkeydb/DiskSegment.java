@@ -239,8 +239,16 @@ class DiskSegment implements Segment {
         }
     }
 
+    static final ThreadLocal<ByteBuffer> bufferCache = new ThreadLocal<>(){
+        @Override
+        protected ByteBuffer initialValue() {
+            return ByteBuffer.allocateDirect(keyBlockSize);
+        }
+    };
     OffsetLen scanBlock(long block,byte[] key) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[keyBlockSize]);
+
+        buffer.clear();
         keyChannel.read(buffer, block*Constants.keyBlockSize);
         buffer.flip();
 
