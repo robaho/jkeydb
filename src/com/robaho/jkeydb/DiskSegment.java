@@ -162,7 +162,7 @@ class DiskSegment implements Segment {
     }
 
     private OffsetLen binarySearch(byte[] key) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(keyBlockSize).order(ByteOrder.BIG_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(maxKeySize+2).order(ByteOrder.BIG_ENDIAN); // enough to hold the first key of key block
 
         long lowblock = 0;
         long highblock = keyBlocks - 1;
@@ -197,7 +197,7 @@ class DiskSegment implements Segment {
         }
 
         long block = binarySearch0(lowblock, highblock, key, buffer);
-        return scanBlock(block, key, buffer);
+        return scanBlock(block, key);
     }
 
     private static int compareKeys(byte[] b,ByteBuffer bb){
@@ -239,8 +239,8 @@ class DiskSegment implements Segment {
         }
     }
 
-    OffsetLen scanBlock(long block,byte[] key,ByteBuffer buffer) throws IOException {
-        buffer.clear();
+    OffsetLen scanBlock(long block,byte[] key) throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[keyBlockSize]);
         keyChannel.read(buffer, block*Constants.keyBlockSize);
         buffer.flip();
 
@@ -256,13 +256,14 @@ class DiskSegment implements Segment {
             long offset = buffer.getLong();
             int len = buffer.getInt();
 
-            if(Arrays.equals(_key, key)) {
+            int result = Arrays.compare(_key,key);
+            if(result==0) {
                 if(len == Constants.removedKeyLen) {
                     return null;
                 }
                 return new OffsetLen(offset,len);
             }
-            if(Arrays.compare(_key, key)>0) {
+            if(result>0) {
                 return null;
             }
         }
