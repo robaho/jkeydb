@@ -2,7 +2,7 @@ Java version of [keydb](https://github.com/robaho/keydb) - an ultra fast key/val
 
 It lacks most of the test cases of the Go version, but is binary file compatible. It was primarily created to test the performance difference between Go and Java.
 
-Performance numbers using the GraalVM:
+Performance numbers using the GraalVM on OSX 11.1 2015 iMac 4ghz i7
 
 ```
 insert time 10000000 records = 15443ms, usec per op 1.5443
