@@ -209,7 +209,7 @@ public class Database {
 
 class InternalTable {
     final String name;
-    volatile List<Segment> segments = new CopyOnWriteArrayList<>();
+    volatile List<Segment> segments = new ArrayList();
     long transactions;
     private final Lock lock = new ReentrantLock();
 

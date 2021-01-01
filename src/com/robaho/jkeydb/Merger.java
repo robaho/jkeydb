@@ -60,7 +60,12 @@ class Merger {
 
         while(true) {
 
-            List<Segment> segments = table.segments;
+            List<Segment> segments;
+
+            table.Lock();
+            segments = new ArrayList<>(table.segments);
+            table.Unlock();
+
             if (segments.size() <= segmentCount) {
                 return;
             }
