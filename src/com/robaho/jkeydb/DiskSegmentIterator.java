@@ -14,7 +14,7 @@ class DiskSegmentIterator implements LookupIterator{
     byte[] data;
 
     final DiskSegment segment;
-    ByteBuffer buffer;
+    final ByteBuffer buffer;
 
     final byte[] lower,upper;
 
@@ -74,8 +74,8 @@ class DiskSegmentIterator implements LookupIterator{
                     return true;
                 }
                 buffer.clear();
-                int n = segment.keyChannel.read(buffer,block*Constants.keyBlockSize);
-                if(n!=buffer.capacity())
+                segment.keyFile.readAt(buffer,block*Constants.keyBlockSize);
+                if(buffer.remaining()!=0)
                     throw new IOException("unable to read keyfile");
                 buffer.flip();
                 prevKey = null;
@@ -108,9 +108,10 @@ class DiskSegmentIterator implements LookupIterator{
                 data = null;
             } else {
                 data = new byte[datalen];
-                int n = segment.dataFile.getChannel().read(ByteBuffer.wrap(data),dataoffset);
-                if(n!=datalen)
-                    throw new IOException("unable to read data file, expecting "+datalen+", read "+n);
+                ByteBuffer bb = ByteBuffer.wrap(data);
+                segment.dataFile.readAt(bb,dataoffset);
+                if(bb.remaining()!=0)
+                    throw new IOException("unable to read data file, expecting "+datalen+", read "+(bb.capacity()-bb.remaining()));
             }
             isValid = true;
             return false;

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -13,10 +12,9 @@ import java.util.*;
 import static com.robaho.jkeydb.Constants.*;
 
 class DiskSegment implements Segment {
-    final RandomAccessFile keyFile;
-    final FileChannel keyChannel;
+    final MemoryMappedFile keyFile;
     long keyBlocks;
-    final RandomAccessFile dataFile;
+    final MemoryMappedFile dataFile;
     final long id;
 
     final private String keyfilename;
@@ -30,9 +28,8 @@ class DiskSegment implements Segment {
         this.keyfilename = keyFilename;
         this.datafilename = dataFilename;
 
-        keyFile = new RandomAccessFile(new File(keyFilename),"r");
-        keyChannel = keyFile.getChannel();
-        dataFile = new RandomAccessFile(dataFilename,"r");
+        keyFile = new MemoryMappedFile(new RandomAccessFile(new File(keyFilename),"r"));
+        dataFile = new MemoryMappedFile(new RandomAccessFile(dataFilename,"r"));
         this.id = getSegmentID(keyFilename);
         this.keyBlocks = (keyFile.length()-1)/keyBlockSize + 1;
 
@@ -44,15 +41,15 @@ class DiskSegment implements Segment {
 
     }
 
-    static List<byte[]> loadKeyIndex(RandomAccessFile keyFile,long keyBlocks) throws IOException {
+    static List<byte[]> loadKeyIndex(MemoryMappedFile keyFile,long keyBlocks) throws IOException {
         byte[] buffer = new byte[keyBlockSize];
         ByteBuffer bb = ByteBuffer.wrap(buffer).order(ByteOrder.BIG_ENDIAN);
         List<byte[]> keyIndex = new ArrayList<byte[]>();
         long block;
 
         for(block = 0; block < keyBlocks; block += keyIndexInterval) {
-            keyFile.seek(block*keyBlockSize);
-            int len = keyFile.read(buffer);
+            bb.clear();
+            keyFile.readAt(bb,block*keyBlockSize);
             int keylen = bb.getShort(0) & 0xFFFF;
             if(keylen == endOfBlock) {
                 break;
@@ -116,7 +113,7 @@ class DiskSegment implements Segment {
             return null;
 
         byte[] buffer = new byte[ol.len];
-        dataFile.getChannel().read(ByteBuffer.wrap(buffer).order(ByteOrder.BIG_ENDIAN),ol.offset);
+        dataFile.readAt(ByteBuffer.wrap(buffer).order(ByteOrder.BIG_ENDIAN),ol.offset);
         return buffer;
     }
 
@@ -147,7 +144,7 @@ class DiskSegment implements Segment {
             block = startBlock;
         }
         buffer.clear();
-        keyChannel.read(buffer,block* keyBlockSize);
+        keyFile.readAt(buffer,block* keyBlockSize);
         buffer.flip();
         return new DiskSegmentIterator(this,lower,upper,buffer,block);
     }
@@ -216,7 +213,7 @@ class DiskSegment implements Segment {
         if(highBlock-lowBlock <= 1) {
             // the key is either in low block or high block, or does not exist, so check high block
             buffer.clear();
-            keyChannel.read(buffer, highBlock* keyBlockSize);
+            keyFile.readAt(buffer, highBlock* keyBlockSize);
             buffer.flip();
 
             if(compareKeys(key,buffer)<0) {
@@ -229,7 +226,7 @@ class DiskSegment implements Segment {
         long block = (highBlock-lowBlock)/2 + lowBlock;
 
         buffer.clear();
-        keyChannel.read(buffer, block*Constants.keyBlockSize);
+        keyFile.readAt(buffer, block*Constants.keyBlockSize);
         buffer.flip();
 
         if(compareKeys(key,buffer)<0) {
@@ -249,7 +246,7 @@ class DiskSegment implements Segment {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[keyBlockSize]);
 
         buffer.clear();
-        keyChannel.read(buffer, block*Constants.keyBlockSize);
+        keyFile.readAt(buffer, block*Constants.keyBlockSize);
         buffer.flip();
 
         byte[] prevKey = null;
