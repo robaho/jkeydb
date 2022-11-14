@@ -1,3 +1,5 @@
+DEPRECATED. Use [robaho/jleveldb](https://github.com/robaho/jleveldb) instead.
+
 Java version of [keydb](https://github.com/robaho/keydb) - an ultra fast key/value database.
 
 It lacks most of the test cases of the Go version, but is binary file compatible. It was primarily created to test the performance difference between Go and Java.
